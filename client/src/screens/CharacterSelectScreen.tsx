@@ -10,7 +10,6 @@ export default function CharacterSelectScreen() {
   const room = useStore((s) => s.room)!;
   const myId = useStore((s) => s.myId)!;
   const me = room.players.find((p) => p.id === myId)!;
-  const isLeader = room.leaderId === myId;
   const teammate = room.players.find((p) => p.team === me.team && p.id !== myId);
   const [expanded, setExpanded] = useState<CharacterId | null>(null);
 
@@ -36,14 +35,12 @@ export default function CharacterSelectScreen() {
 
   return (
     <div className="relative mx-auto flex min-h-screen max-w-4xl flex-col gap-8 px-6 py-10">
-      {isLeader && (
-        <button
-          onClick={goHome}
-          className="absolute right-6 top-10 text-sm text-ink-muted underline hover:text-ink"
-        >
-          Home
-        </button>
-      )}
+      <button
+        onClick={goHome}
+        className="absolute right-6 top-10 text-sm text-ink-muted underline hover:text-ink"
+      >
+        Home
+      </button>
       <h1 className="text-center font-display text-3xl font-bold text-ink">Choose Your Character</h1>
 
       <div className="flex justify-center gap-6">

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Player, Team } from '@six-of-shadows/shared';
-import { CHARACTERS, MAX_SELECT } from '@six-of-shadows/shared';
+import { CHARACTERS, MAX_SELECT, TOTAL_TURNS } from '@six-of-shadows/shared';
 import { lockIn, sendClue, updateSelection, useAbility } from '../state/actions';
 import { useStore } from '../state/store';
 import { CardLegend } from '../components/CardLegend';
@@ -194,6 +194,9 @@ export default function BoardScreen() {
   return (
     <div className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-4 py-8">
       <div className="rounded-xl border border-border bg-surface p-4">
+        <p className="mb-3 text-center text-xs font-semibold uppercase tracking-widest text-ink-muted">
+          {turn.isSuddenDeath ? 'Sudden Death' : `Round ${turn.turnNumber} of ${TOTAL_TURNS}`}
+        </p>
         <div className="flex items-start justify-between">
           <TeamInfo team="gold" players={room.players.filter((p) => p.team === 'gold')} score={displayScores.gold} acting={turn.actingTeam === 'gold'} />
           <div className="relative mt-4 flex flex-col items-center">

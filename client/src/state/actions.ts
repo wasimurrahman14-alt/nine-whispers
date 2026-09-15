@@ -31,7 +31,7 @@ export function rejoin(code: string, sessionToken: string) {
 
 export const selectTeam = (team: Team) => socket.emit('selectTeam', { team });
 export const randomizeTeams = () => socket.emit('randomizeTeams');
-export const startCharacterSelect = () => socket.emit('startCharacterSelect');
+export const beginMatch = () => socket.emit('beginMatch');
 export const selectCharacter = (character: CharacterId | null) => socket.emit('selectCharacter', { character });
 export const setReady = (ready: boolean) => socket.emit('setReady', { ready });
 export const sendClue = (word: string, number: number) => socket.emit('sendClue', { word, number });

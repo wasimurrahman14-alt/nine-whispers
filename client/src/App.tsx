@@ -5,6 +5,7 @@ import { rejoin } from './state/actions';
 import { loadSession } from './state/session';
 import JoinScreen from './screens/JoinScreen';
 import HomeScreen from './screens/HomeScreen';
+import CoinTossScreen from './screens/CoinTossScreen';
 import CharacterSelectScreen from './screens/CharacterSelectScreen';
 import RoleRevealScreen from './screens/RoleRevealScreen';
 import BoardScreen from './screens/BoardScreen';
@@ -38,6 +39,8 @@ function GameRoom() {
   switch (room.match.phase) {
     case 'lobby':
       return <HomeScreen />;
+    case 'coinToss':
+      return <CoinTossScreen />;
     case 'characterSelect':
       return <CharacterSelectScreen />;
     case 'roleReveal':

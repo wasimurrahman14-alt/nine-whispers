@@ -29,6 +29,10 @@ const ABILITY_ANNOUNCE_MS = 2200;
 // disconnect (network blip, host restart) can reconnect before its room
 // is destroyed. Well above socket.io's default reconnection attempts.
 const EMPTY_LOBBY_GRACE_MS = 30000;
+// How long the coin-toss screen stays up before auto-advancing to character
+// select — long enough for the client's flip-then-land animation to finish
+// and the result to sink in.
+const COIN_TOSS_MS = 3600;
 
 const app = express();
 app.use(cors());
@@ -37,6 +41,15 @@ app.get('/health', (_req, res) => res.json({ ok: true }));
 const httpServer = createServer(app);
 const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
   cors: { origin: '*' },
+  // Socket.io's defaults (pingTimeout: 20s) are tuned for desktop browsers.
+  // Mobile Safari in particular throttles background JS timers hard enough
+  // — even during brief, normal backgrounding like a screen dim or a
+  // notification pull-down, not just a real tab switch — that a phone can
+  // miss the default window and get marked disconnected while the player
+  // never actually left. Widening this tolerates that without meaningfully
+  // slowing down detection of an actually-dead connection.
+  pingInterval: 25000,
+  pingTimeout: 60000,
 });
 
 function emitRoomState(room: Room): void {
@@ -64,6 +77,15 @@ function scheduleAdvanceAfterReveal(room: Room): void {
     emitRoomState(current);
     if (result === 'next') scheduleRoleRevealThenBoard(current);
   }, TURN_RESULT_MS);
+}
+
+function scheduleCharacterSelectAfterCoinToss(room: Room): void {
+  setTimeout(() => {
+    const current = getRoom(room.code);
+    if (!current || current.match.phase !== 'coinToss') return;
+    current.match.phase = 'characterSelect';
+    emitRoomState(current);
+  }, COIN_TOSS_MS);
 }
 
 io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>) => {
@@ -148,7 +170,7 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
     });
   });
 
-  socket.on('startCharacterSelect', () => {
+  socket.on('beginMatch', () => {
     withRoom((room, playerId) => {
       if (room.match.phase !== 'lobby') return;
       if (room.leaderId !== playerId) {
@@ -165,10 +187,14 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
         socket.emit('errorMessage', { message: 'Each team needs exactly 2 players.' });
         return;
       }
-      room.match.phase = 'characterSelect';
-      room.locked = true;
+      // Turn plan (and therefore which team goes first) is computed now, up
+      // front, so the coin-toss screen has a real outcome to animate toward
+      // rather than just theater layered on top of a later random pick.
       computeTurnPlan(room);
+      room.match.phase = 'coinToss';
+      room.locked = true;
       emitRoomState(room);
+      scheduleCharacterSelectAfterCoinToss(room);
     });
   });
 
@@ -332,10 +358,10 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
   });
 
   socket.on('goHome', () => {
-    withRoom((room, playerId) => {
-      if (room.leaderId !== playerId) return;
-      // Allowed from 'characterSelect' too so the leader's Home click still
-      // wins even if another player's Rematch reached the server first.
+    withRoom((room) => {
+      // Any player can trigger this — allowed from 'characterSelect' too so
+      // it still wins even if another player's Rematch reached the server
+      // moments earlier.
       if (room.match.phase !== 'end' && room.match.phase !== 'characterSelect') return;
       clearMatchInternals(room.code);
       room.match = {

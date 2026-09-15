@@ -8,6 +8,7 @@ export type CardColor = 'gold' | 'silver' | 'green' | 'red' | 'white';
 
 export type MatchPhase =
   | 'lobby'
+  | 'coinToss'
   | 'characterSelect'
   | 'roleReveal'
   | 'board'

@@ -1,5 +1,5 @@
 import type { Player, Team } from '@six-of-shadows/shared';
-import { randomizeTeams, selectTeam, startCharacterSelect } from '../state/actions';
+import { beginMatch, randomizeTeams, selectTeam } from '../state/actions';
 import { useStore } from '../state/store';
 import { Avatar } from '../components/Avatar';
 import logo from '../assets/logo.png';
@@ -70,7 +70,7 @@ export default function HomeScreen() {
 
       <button
         disabled={!allOnTeams || !isLeader}
-        onClick={startCharacterSelect}
+        onClick={beginMatch}
         className="w-full rounded-xl bg-accent px-6 py-5 font-display text-2xl font-bold text-bg shadow-lg hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
       >
         Ready

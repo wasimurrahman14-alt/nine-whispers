@@ -15,7 +15,7 @@ export interface ClientToServerEvents {
   ) => void;
   selectTeam: (payload: { team: Team }) => void;
   randomizeTeams: () => void;
-  startCharacterSelect: () => void;
+  beginMatch: () => void;
   selectCharacter: (payload: { character: CharacterId | null }) => void;
   setReady: (payload: { ready: boolean }) => void;
   sendClue: (payload: { word: string; number: number }) => void;
