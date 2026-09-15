@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.cache/
+*.tsbuildinfo
+.DS_Store
+
+# Environment files — never commit secrets or machine-specific config
+.env
+.env.local
+.env.*.local
