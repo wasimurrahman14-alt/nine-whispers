@@ -25,6 +25,10 @@ const TURN_RESULT_MS = 6500;
 // How long an ability-use announcement stays up before the server clears it
 // — long enough to cover Pirate's one-by-one word-shuffle animation.
 const ABILITY_ANNOUNCE_MS = 2200;
+// Grace period before an empty lobby is garbage-collected, so a brief
+// disconnect (network blip, host restart) can reconnect before its room
+// is destroyed. Well above socket.io's default reconnection attempts.
+const EMPTY_LOBBY_GRACE_MS = 30000;
 
 const app = express();
 app.use(cors());
@@ -361,7 +365,10 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
     const player = room.players.find((p) => p.id === ref.playerId);
     if (player) player.connected = false;
     emitRoomState(room);
-    removeEmptyRoomIfLobby(room.code);
+    // Grace period before cleaning up an empty lobby — a brief connection
+    // blip (mobile data switching towers, a host restart, etc.) shouldn't
+    // destroy a room before the automatic reconnect has a chance to land.
+    setTimeout(() => removeEmptyRoomIfLobby(ref.roomCode), EMPTY_LOBBY_GRACE_MS);
   });
 });
 
