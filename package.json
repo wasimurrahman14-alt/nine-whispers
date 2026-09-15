@@ -2,6 +2,9 @@
   "name": "six-of-shadows",
   "private": true,
   "version": "1.0.0",
+  "engines": {
+    "node": ">=20"
+  },
   "workspaces": [
     "packages/shared",
     "server",
