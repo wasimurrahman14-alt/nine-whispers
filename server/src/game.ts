@@ -1,5 +1,12 @@
-import type { Card, CardColor, PlannedTurn, Team } from '@six-of-shadows/shared';
-import { GREEN_CARDS_PER_TURN, RED_CARDS_PER_TURN, TEAM_CARDS_PER_TURN, WHITE_CARDS_PER_TURN, WORDS } from '@six-of-shadows/shared';
+import type { Card, CardColor, PlannedTurn, Team, WordTier } from '@six-of-shadows/shared';
+import {
+  GREEN_CARDS_PER_TURN,
+  RED_CARDS_PER_TURN,
+  TEAM_CARDS_PER_TURN,
+  WHITE_CARDS_PER_TURN,
+  WORD_TIERS,
+  hasPhoneticCollision,
+} from '@six-of-shadows/shared';
 
 export function shuffle<T>(arr: T[]): T[] {
   const copy = arr.slice();
@@ -51,14 +58,67 @@ export function planTurns(
   return plan;
 }
 
-export function dealCards(actingTeam: Team, usedWords: Set<string>): Card[] {
-  const count = TEAM_CARDS_PER_TURN + RED_CARDS_PER_TURN + WHITE_CARDS_PER_TURN + GREEN_CARDS_PER_TURN;
-  let pool = WORDS.filter((w) => !usedWords.has(w));
-  if (pool.length < count) {
-    usedWords.clear();
-    pool = WORDS.slice();
+// Roughly 5 Tier 1 / 3 Tier 2 / 1 Tier 3 per 9-card board — a tunable
+// starting point (not a fixed law) grounded in the word bank's own
+// cluability research: concrete, polysemous words should dominate a board,
+// with abstract/single-meaning words used sparingly. Must each sum to the
+// slot count they fill (9 for a fresh board, 4 for Pirate's replace).
+const BOARD_TIER_TARGETS: [WordTier, number][] = [
+  [1, 5],
+  [2, 3],
+  [3, 1],
+];
+const REPLACE_TIER_TARGETS: [WordTier, number][] = [
+  [1, 2],
+  [2, 1],
+  [3, 1],
+];
+// Bounded retries for the same-board phonetic collision check below — word
+// pools are large relative to a 9-card draw, so a clean draw is found
+// almost immediately; this just caps the (very unlikely) worst case.
+const COLLISION_RETRY_LIMIT = 25;
+
+/** Draws words for a board (or a partial replacement) per the tier mix
+ * above, retrying until no two words on the resulting board — including
+ * any `contextWords` staying in place — share a Soundex code (the cheap
+ * phonetic check that keeps soundalike pairs like Bear/Bare or
+ * Waist/Waste off the same board together). */
+function pickWordsAvoidingCollisions(
+  targets: [WordTier, number][],
+  usedWords: Set<string>,
+  contextWords: string[] = [],
+): string[] {
+  const exclude = new Set(contextWords);
+
+  function draw(): string[] | null {
+    const picked: string[] = [];
+    for (const [tier, count] of targets) {
+      const pool = WORD_TIERS[tier].filter(
+        (w) => !usedWords.has(w) && !exclude.has(w) && !picked.includes(w),
+      );
+      if (pool.length < count) return null;
+      picked.push(...shuffle(pool).slice(0, count));
+    }
+    return shuffle(picked);
   }
-  const words = shuffle(pool).slice(0, count);
+
+  let words = draw();
+  if (!words) {
+    // Not enough unused words left in some tier for a fresh draw — start
+    // this match's word pool over, same fallback the old flat bank used.
+    usedWords.clear();
+    words = draw();
+  }
+  words ??= [];
+
+  for (let i = 0; i < COLLISION_RETRY_LIMIT && hasPhoneticCollision([...contextWords, ...words]); i++) {
+    words = draw() ?? words;
+  }
+  return words;
+}
+
+export function dealCards(actingTeam: Team, usedWords: Set<string>): Card[] {
+  const words = pickWordsAvoidingCollisions(BOARD_TIER_TARGETS, usedWords);
   words.forEach((w) => usedWords.add(w));
   const colors: CardColor[] = shuffle([
     ...Array(TEAM_CARDS_PER_TURN).fill(actingTeam),
@@ -72,13 +132,9 @@ export function dealCards(actingTeam: Team, usedWords: Set<string>): Card[] {
 /** Pirate — Word Shuffle: replace 4 of 9 words, colors unchanged. */
 export function replaceFourWords(cards: Card[], usedWords: Set<string>): Card[] {
   const replaceCount = 4;
-  let pool = WORDS.filter((w) => !usedWords.has(w) && !cards.some((c) => c.word === w));
-  if (pool.length < replaceCount) {
-    usedWords.clear();
-    pool = WORDS.filter((w) => !cards.some((c) => c.word === w));
-  }
-  const replacementWords = shuffle(pool).slice(0, replaceCount);
   const slotsToReplace = shuffle(cards.map((_, i) => i)).slice(0, replaceCount);
+  const staying = cards.filter((_, i) => !slotsToReplace.includes(i)).map((c) => c.word);
+  const replacementWords = pickWordsAvoidingCollisions(REPLACE_TIER_TARGETS, usedWords, staying);
   const next = cards.map((c) => ({ ...c }));
   slotsToReplace.forEach((slot, i) => {
     next[slot] = { word: replacementWords[i], color: next[slot].color };
