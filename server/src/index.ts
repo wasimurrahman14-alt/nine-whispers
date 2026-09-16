@@ -388,6 +388,14 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
     if (!ref) return;
     const room = getRoom(ref.roomCode);
     if (!room) return;
+    // If this player already has a newer socket bound, their connection
+    // actually reconnected (new tab/network path) before this stale
+    // disconnect event for the old socket reached us — most commonly a
+    // network handoff on a phone or any device other than the host's own
+    // (loopback) connection, where socket.io's belated timeout on the dead
+    // old socket can arrive well after the client already rejoined on a
+    // fresh one. Don't clobber their now-accurate connected state.
+    if (socketForPlayer(ref.playerId)) return;
     const player = room.players.find((p) => p.id === ref.playerId);
     if (player) player.connected = false;
     emitRoomState(room);

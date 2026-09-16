@@ -150,6 +150,11 @@ body {
 
 .coin-toss-perspective {
   perspective: 1200px;
+  /* Lives here, not on .coin-toss-coin: a filter on the element that also
+     has transform-style: preserve-3d forces the browser to flatten its
+     children to 2D before filtering, which breaks backface-visibility and
+     leaves the front face stuck showing no matter how the coin is rotated. */
+  filter: drop-shadow(0 18px 24px rgba(0, 0, 0, 0.55));
 }
 
 .coin-toss-coin {
@@ -160,7 +165,6 @@ body {
   animation-duration: 2.6s;
   animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
   animation-fill-mode: forwards;
-  filter: drop-shadow(0 18px 24px rgba(0, 0, 0, 0.55));
 }
 
 .coin-toss-face {
